@@ -1,27 +1,11 @@
 import json
 from pytube import YouTube 
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 
-# Opening JSON file
-f = open('history.json', encoding='utf-8')
 
-data = json.load(f)
-
-# Closing file
-f.close()
-
-seconds_total = 0
-seconds = 0
-minutes = 0
-hours = 0
-days = 0
-
-video_counter = 0
-error_counter = 0
-
-n = len(data)
-
-for video in data:
+def process_video(video):
+    global seconds_total, seconds, minutes, hours, days, video_counter, error_counter
 
     print("%.2f%%   " % ((video_counter + 1)*100/n), end="")
 
@@ -33,7 +17,7 @@ for video in data:
         if yt.length > 86400:
             error_counter += 1
             print("Looks like stream, ignore it")
-            continue
+            return
 
         seconds_total += yt.length
         
@@ -58,7 +42,25 @@ for video in data:
         print(video['title'])
 
 
-print("Done")
+with open('history.json', encoding='utf-8') as f:
+    data = json.load(f)
+
+seconds_total = 0
+seconds = 0
+minutes = 0
+hours = 0
+days = 0
+
+video_counter = 0
+error_counter = 0
+
+n = len(data)
+
+with ThreadPoolExecutor() as executor:
+    executor.map(process_video, data)
+
+
+print("\nDone")
 print("You have watched %d videos" % video_counter)
 print("Unable to process %d links\n" % error_counter)
 
@@ -79,6 +81,6 @@ days += hours//24
 seconds = seconds%60
 minutes = minutes%60
 hours = hours%24
-print("Estimated total time is (videos that were impossible to process are added to calculated time assuming average length):")
+print("Estimated total time (videos that were impossible to process are added to calculated time assuming average length) is:")
 print("DAYS:HOURS:MIN:SEC")
 print("%d:%d:%d:%d\n" % (days, hours, minutes, seconds))
